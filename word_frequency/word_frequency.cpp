@@ -5,6 +5,9 @@
 #include <chrono>
 #include <fstream>
 #include <cmath>
+#include <Windows.h>
+
+#pragma execution_character_set("utf-8")
 
 struct FrequencyPair
 {
@@ -19,7 +22,7 @@ class Frequency
 private:
     const char start_char;
     const char end_char;
-    const char asciiSize;
+    const int asciiSize;
     std::array<FrequencyPair, Size> table;
     size_t stored;
     size_t fail_count;
@@ -149,11 +152,12 @@ private:
 
 public:
     Frequency(const char &start_char = '!', const char &end_char = '~')
-        : start_char(start_char), end_char(end_char), asciiSize(end_char - start_char + 1), stored(0), fail_count(0)
+        : start_char(start_char), end_char(end_char),
+          asciiSize(end_char - start_char + 1),
+          stored(0), fail_count(0), global_accumulator(0)
     {
         FrequencyPair pair = {"", 0, false};
         table.fill(pair);
-        global_accumulator = 0;
     }
 
     void reset()
@@ -185,23 +189,33 @@ public:
                 sum += power * (word[i] - start_char);
         }
         sum--;
-        sum %= Size;
         return sum;
+    }
+    // FNV-1a hash function
+    uint32_t fnv1a(const std::string &str = "hello", const uint32_t &seed = 0x811c9dc5) const
+    {
+        uint32_t hash = seed;
+        for (const char c : str)
+        {
+            hash ^= static_cast<uint8_t>(c);
+            hash *= 0x01000193;
+        }
+        return hash;
     }
     /**
      * Returns the spot if it's found, otherwise returns array size.
      */
     size_t hash(const std::string &word, bool &isNew) const
     {
-        size_t sum = hash_base(word);
+        size_t sum = fnv1a(word) % Size;
 
-        if (table[sum].word == word)
-        {
-            return sum;
-        }
         if (!(table[sum].exists))
         {
             isNew = true;
+            return sum;
+        }
+        if (table[sum].word == word)
+        {
             return sum;
         }
 
@@ -209,18 +223,19 @@ public:
         // probe to find an empty spot.
         for (size_t i = 1; i < Size - 1; i++)
         {
-            const size_t spot = (sum + i) % Size;
-            if (table[spot].word == word)
-            {
-                return spot;
-            }
+            const size_t spot = (sum + i * i) % Size;
             if (!(table[spot].exists))
             {
                 isNew = true;
                 return spot;
             }
+            if (table[spot].word == word)
+            {
+                return spot;
+            }
         }
         // failed to find an empty spot (array full), return invalid value (array Size).
+        isNew = false;
         return Size;
     }
     void countFrequencyFromText(const std::string &text)
@@ -287,13 +302,15 @@ public:
 
 int main()
 {
+    SetConsoleOutputCP(65001);
+
     std::string word;
 
-    std::ifstream textFile("text.txt");
+    std::ifstream textFile("article.txt");
     if (!textFile)
         return 1;
 
-    Frequency freq = Frequency<991>();
+    Frequency freq = Frequency<10000>();
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     while (textFile >> word)

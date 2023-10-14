@@ -1,0 +1,214 @@
+Hash tables, also known as hash maps, are data structures that provide efficient insertion, deletion, and retrieval of key-value pairs. They are designed to optimize data access by using a technique called hashing.
+
+At the core of a hash table is an underlying array, typically larger than the number of elements to be stored. The key feature of a hash table is a hash function, which takes a key as input and computes a hash code, an integer value that represents the index where the corresponding value will be stored in the array.
+
+Hash Functions:we use hash functions to compute location to store hash keys, hash keys are basically value that we have to insert.Most widely use hash function are k mode 10, k mode n. where k is the key value and n is the total number of key values
+
+For Example:
+
+we have 10 key values so we spare 10 indexes in memory for data insertion.
+
+key values are 10,76,82,19,17,55,43,91,88,64
+
+In this example we are going to use k mod 10 as hash function
+
+And heres the formula, h´(k) = k 𝑚𝑜𝑑 10 or h´(k) = k 𝑚𝑜𝑑 n
+
+heres our blank memory write now,
+
+we took key value 10 and give it as input in hash function
+
+10 mod 10 = 0, so we will insert 10 at 0 index like this
+
+Now second key value which is 76
+
+76 mod 10 = 6
+
+now we will store 76 at 6 index, like this
+
+Now next key value which is 82
+
+82 mod 10 = 2
+
+now we will store 82 at 2 index, like this
+
+now i have output of all key values inserted as input in hash function, like this,
+
+Insertion is easy, Deletion is also easy we just have to find index by using hash fuction,let me explain.
+
+Deletion And Updating:
+
+if i want to delete a key value for example 44 then i will apply 44 mode 10=4 and we can remove or update data stored(44) on 4 index easily.
+
+But there is a problem in all this procedure which is called as “Collision problem”
+
+Collision Problem: When different keys produce the same hash code in a hash table. It can lead to data overwriting and retrieval ambiguity. If we have key values like 44 and 74 then there output will be 4,
+
+    which one will be stored on 4 index.
+    How to resolve it.
+    How can we store both.
+
+Collision Resolution: There are Techniques to handle collisions in hash tables when multiple keys produce the same hash code, including
+
+    separate chaining
+    open addressing methods
+
+Separate Chaining:A collision resolution technique in hash tables where each slot contains a linked list. Colliding keys are stored as nodes in the linked list associated with their respective slot.I assume you know linked list data structure already.
+
+For example we have key values which are “54,12,22,32,67,77,88,42” as “12,22,32” will have same index so we will create a linked list here and in case of “67,77” we delt with the situation in same way.
+
+How Does It Work:
+
+Initialization: Initially, all the slots in the hash table are empty.
+
+Insertion: When inserting a key-value pair into the hash table, the hash function is used to calculate the index where the value should be stored. If the slot at that index is empty, the value is directly placed there. However, if there is already a value present at that index (a collision occurs), separate chaining comes into play.
+
+Linked List: Instead of replacing the existing value, a linked list is created at the slot/index. Each node in the linked list contains the key-value pair. If subsequent collisions occur at the same slot, new nodes are appended to the existing linked list.
+
+Retrieval: To retrieve a value, the hash function is again used to determine the index. The linked list at that index is traversed, searching for the desired key. By comparing the keys in the linked list with the target key, the corresponding value can be found.
+
+Deletion: When deleting a value, the hash function is used to find the index, and then the linked list is searched for the specific key. Once found, the corresponding node can be removed from the linked list.
+
+Draw Back OF Separate Chaining:
+
+    Increased Memory:Separate chaining requires additional memory to store the linked lists. Each slot in the hash table that experiences collisions needs to maintain a linked list, whic require extra memory and if we noticed in hash table there is alot of memory indexes are still empty like index number 4,6,7,8,9
+    Extra Pointer: Each node in the linked list requires an additional pointer to store the reference to the next node. This increases the memory usage per element .
+    Additional Complexity: Implementing separate chaining requires managing linked lists, addition deletion and updating become more complicated. This complexity can make the implementation and maintenance of hash tables with separate chaining more challenging.
+
+Now ,
+Open Addressing:
+
+Open addressing is another collision resolution technique used in hash tables. Unlike separate chaining, open addressing stores all the key-value pairs directly in the hash table array itself. When a collision occurs, the algorithm probes the table by examining the next available slot in a predefined sequence until an empty slot is found.Open addressing is al about finding next slot index if collision occurs.
+
+Algorithm Probes: Algorithm probes refer to the process of searching for the next available slot when a collision occurs.
+
+There are three common techniques used for probing to find the next available slot when a collision occurs.
+
+    Linear Probing
+    Quadratic Probing
+    Double Hashing:
+
+Linear Probing:
+
+In linear probing,
+
+First we have to find h´(k) = k 𝑚𝑜𝑑 n, like we always do
+
+If a collision occurs at index i , the algorithm probes the next slot i+1 which is very next slot. If that slot is also occupied, it continues to probe the subsequent slots i+2, i+3, and so on, until an empty slot is found.
+
+The probing sequence follows a linear progression, hence the name “linear probing”.
+
+Example:
+
+Let’s assume we have a hash table with 10 slots and the following hash function:
+
+Hash Function: hash(key) = key % 10
+
+We’ll use linear probing to resolve collisions. Here’s how the insertion process works:
+
+Insertion:
+
+    We want to insert the key-value pair (23) into the hash table.
+    We calculate the initial index using the hash function: hash(23) = 23 % 10 = 3.
+    If the slot at index 3 is empty, we store the value there.
+    If the slot is occupied, we use linear probing to find the next available slot.
+    We probe the next slot by incrementing the index by 1: 3 + 1 = 4.
+    If the slot at index 4 is empty, we store the value there.
+    If it’s occupied, we probe again: 3 + 2 = 5.
+    We continue this process until an empty slot is found.
+
+Retrieval:
+
+    To retrieve the value associated with key 23, we calculate the initial index: hash(23) = 3.
+    We check if the value at index 3 matches the key. If not, we probe for the next slot by incrementing the index: 3 + 1 = 4.
+    The value at index 4 doesn’t match, so we probe again: 4 + 1 = 5.
+
+Quadratic Probing:
+
+First we have to find h´(k) = k 𝑚𝑜𝑑 n, like we always do if collision happens then we will use quadratic probing to find next slot index.
+
+Quadratic probing uses a quadratic equation to determine the next probe position.
+
+When a collision occurs at index , the algorithm probes the next slot using the formula i + 1^2, then i + 2^2, i + 3^2, and so on, until an empty slot is found.
+
+Quadratic probing can help reduce clustering compared to linear probing.
+
+Example:
+
+Let’s assume we have a hash table with 10 slots and the following hash function:
+
+Hash Function: hash(key) = key % 10
+
+We’ll use quadratic probing to resolve collisions. Here’s how the insertion process works:
+
+Insertion:
+
+    We want to insert the key(23) into the hash table.
+    We calculate the initial index using the hash function: hash(23) = 23 % 10 = 3.
+    If the slot at index 3 is empty, we store the value there.
+    then next value lets assume 33 then by applying hash functionhash(33) = 33 % 10 = 3
+    As the slot is occupied, we use quadratic probing to find the next available slot.
+    We calculate the probe offset using a quadratic function:i^2.
+    Starting from index 3, we probe the next slot using the offset: 3 + 1^2 = 4.
+    If the slot at index 4 is empty, we store the value there.
+    If it’s occupied, we probe again: 3 + 2^2 = 7.
+    and again and again until we find blank slot.
+
+Retrieval:
+
+    To retrieve the value associated with key 23, we calculate the initial index: hash(23) = 3.
+    We check if the value at index 3 matches the key. If not, we use quadratic probing to probe for the next slot.
+    Using the quadratic function, we probe: 3 + 1^2 = 4. The value at index 4 doesn't match.
+    We probe again: 3 + 2^2 = 7 untill we found our desired key value.
+
+Double Hashing:
+
+First we have to find h1´(k) = k 𝑚𝑜𝑑 n, like we always do if collision happens then we will use double hashing to find next slot.
+
+it has two formulas
+
+h2´(k) = 8-(k 𝑚𝑜𝑑 8) — → this one is to generlize all values
+
+(h1´(k) + h2´(k))mod n
+
+Example:
+
+We’ll assume a hash table size of 10 ;
+
+Primary Hash Function: h1(k) = k % 10
+
+Secondary Hash Function: h2(k) = 8 - (k % 8)
+
+Let’s insert some keys into the hash table:
+
+Insertion:
+
+Insert (23):
+
+    Calculate the primary hash: h1(23) = 23 % 10 = 3.
+    Insert at index 3.
+
+Insert (43):
+
+    Calculate the primary hash: h1(43) = 43 % 10 = 3.
+    Calculate the secondary hash: h2(43) = 8 - (43 % 8) = 8 - 3= 5.
+    (h1(43)+h2(43))mod10 =>(3+5) mode 10=8
+    Insert at index 8.
+
+Insert (53):
+
+    Calculate the primary hash: h1(53) = 53 % 10 = 3.
+    Calculate the secondary hash: h2(53) = 8 - (53 % 8) = 8 - 5= 3.
+    (h1(53)+h2(53))mod10 =>(3+3) mode 10=6
+    Insert at index 6.
+
+and so on we apply them on all values of array size 10.
+Clustering In Linear Prob:
+
+Clustering,refers to the phenomenon where consecutive collisions occur, resulting in the clustering of values in adjacent slots within the hash table. When a collision occurs, and the next slot is already occupied, linear probing or quadratic probing techniques are used to find the next available slot. However, if multiple keys collide and probe to the same slot, it can create a cluster of values in close proximity within the hash table.
+Conclusion:
+
+    Separate chaining provides flexibility in handling collisions but incurs additional memory overhead due to linked lists.
+    Quadratic probing reduces clustering and avoids long linear chains but requires careful selection of hash function and probe sequence.
+    Linear probing has a simple implementation and is cache-friendly, but it can suffer from clustering and degraded performance for high load factors.
+    The choice of hashing technique depends on various factors such as the expected load factor, the size of the hash table, the nature of the keys, and the desired trade-offs between memory usage, retrieval speed, and collision resolution. It is important to analyse the characteristics of your data and consider these factors when selecting the appropriate hashing technique.

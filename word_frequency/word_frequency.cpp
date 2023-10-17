@@ -6,6 +6,7 @@
 #include <fstream>
 #include <cmath>
 #include <Windows.h>
+#include <regex>
 
 #pragma execution_character_set("utf-8")
 
@@ -27,6 +28,8 @@ private:
     size_t stored;
     size_t fail_count;
     size_t global_accumulator;
+    size_t collision_count;
+    size_t collision_iterations;
 
     /**
      * Example W = { A1, A2, A3, ... , AN }; N = |W|
@@ -154,7 +157,8 @@ public:
     Frequency(const char &start_char = '!', const char &end_char = '~')
         : start_char(start_char), end_char(end_char),
           asciiSize(end_char - start_char + 1),
-          stored(0), fail_count(0), global_accumulator(0)
+          stored(0), fail_count(0), global_accumulator(0),
+          collision_count(0), collision_iterations(0)
     {
         FrequencyPair pair = {"", 0, false};
         table.fill(pair);
@@ -165,6 +169,8 @@ public:
         stored = 0;
         global_accumulator = 0;
         fail_count = 0;
+        collision_count = 0;
+        collision_iterations = 0;
         FrequencyPair pair = {"", 0, false};
         table.fill(pair);
     }
@@ -192,7 +198,7 @@ public:
         return sum;
     }
     // FNV-1a hash function
-    uint32_t fnv1a(const std::string &str = "hello", const uint32_t &seed = 0x811c9dc5) const
+    uint32_t fnv1a(const std::string &str, const uint32_t &seed = 0x811c9dc5) const
     {
         uint32_t hash = seed;
         for (const char c : str)
@@ -205,53 +211,94 @@ public:
     /**
      * Returns the spot if it's found, otherwise returns array size.
      */
-    size_t hash(const std::string &word, bool &isNew) const
+    size_t hash(const std::string &word, bool &isNew, bool &isCollision, bool &isCollisionIteration) const
     {
-        size_t sum = fnv1a(word) % Size;
-
-        if (!(table[sum].exists))
+        size_t h1 = fnv1a(word) % Size;
+        isNew = false;
+        isCollision = false;
+        isCollisionIteration = false;
+        if (!(table[h1].exists))
         {
             isNew = true;
-            return sum;
+            return h1;
         }
-        if (table[sum].word == word)
+        if (table[h1].word == word)
         {
-            return sum;
+            return h1;
         }
-
-        // if the spot is filled but the word is different (meaning that the array is smaller than word count) ->
-        // probe to find an empty spot.
-        for (size_t i = 1; i < Size - 1; i++)
+        size_t h2 = (fnv1a(word, 0xdeadbeef) % (Size - 2)) + 1;
+        size_t i = 0;
+        while (i < Size - 1)
         {
-            const size_t spot = (sum + i * i) % Size;
+            const size_t spot = (h1 + i * h2) % Size;
             if (!(table[spot].exists))
             {
                 isNew = true;
+                isCollision = true;
+                isCollisionIteration = true;
                 return spot;
             }
             if (table[spot].word == word)
             {
+                isCollisionIteration = true;
                 return spot;
             }
+            i++;
         }
-        // failed to find an empty spot (array full), return invalid value (array Size).
-        isNew = false;
         return Size;
     }
-    void countFrequencyFromText(const std::string &text)
+
+    /**
+     * If useRegex == true -> bool trim is ignored + very slow execution.
+     * Else, skipNonWords skips "words" that start or end with non-alphabetic characters.
+     */
+    void countFrequencyFromText(const std::string &text, const bool &lowercase = false, const bool &skipNonWords = false, const bool &useRegex = false)
     {
-        std::istringstream iss(text);
-        do
+        if (useRegex)
         {
+            const std::regex word_regex("[a-zA-Z]+(-[a-zA-Z]+)*");
+            auto words_begin = std::sregex_iterator(text.begin(), text.end(), word_regex);
+            auto words_end = std::sregex_iterator();
+            for (std::sregex_iterator i = words_begin; i != words_end; ++i)
+            {
+                std::string word = i->str();
+                /* if (trim)
+                {
+                    word.erase(std::remove_if(word.begin(), word.end(), [](char c)
+                                              { return !std::isalpha(c); }),
+                               word.end());
+                    if (word.empty())
+                    {
+                        continue;
+                    }
+                } */
+                if (lowercase)
+                    std::transform(word.begin(), word.end(), word.begin(), ::tolower);
+                countFrequencyByWord(word);
+            }
+        }
+        else
+        {
+            std::istringstream iss(text);
             std::string word;
-            iss >> word;
-            countFrequencyByWord(word);
-        } while (iss);
+            while (iss >> word)
+            {
+                if (skipNonWords && (!std::isalpha(word.front()) || !std::isalpha(word.back())))
+                {
+                    continue;
+                }
+                if (lowercase)
+                    std::transform(word.begin(), word.end(), word.begin(), ::tolower);
+                countFrequencyByWord(word);
+            }
+        }
     }
     void countFrequencyByWord(const std::string &word)
     {
         bool isNew = false;
-        const size_t spot = hash(word, isNew);
+        bool isCollision = false;
+        bool isCollisionIteration = false;
+        const size_t spot = hash(word, isNew, isCollision, isCollisionIteration);
         if (spot != Size)
         {
             table[spot].word = word;
@@ -260,23 +307,16 @@ public:
             global_accumulator++;
             if (isNew)
                 stored++;
+            if (isCollision)
+                collision_count++;
+            if (isCollisionIteration)
+                collision_iterations++;
         }
         else
         {
             fail_count++;
         }
     }
-    /* void countFrequencySlow(const std::string &text)
-    {
-        for (char c = ' '; c <= '~'; ++c)
-        {
-            int frequency = 0;
-            for (int i = 0; i < text.length(); ++i)
-                if (text[i] == c)
-                    frequency++;
-            table[(size_t)(c - ' ')] = frequency;
-        }
-    } */
     void print() const
     {
         for (size_t i = 0; i < Size; i++)
@@ -297,6 +337,8 @@ public:
     char getEndChar() const { return end_char; }
     size_t getStoredSize() const { return stored; }
     size_t getFailedCount() const { return fail_count; }
+    size_t getCollisions() const { return collision_count; }
+    size_t getCollisionIterations() const { return collision_iterations; }
     size_t getSize() const { return Size; }
 };
 
@@ -304,46 +346,33 @@ int main()
 {
     SetConsoleOutputCP(65001);
 
-    std::string word;
+    std::string line;
 
     std::ifstream textFile("article.txt");
     if (!textFile)
         return 1;
 
-    Frequency freq = Frequency<10000>();
+    Frequency freq = Frequency<800>();
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    while (textFile >> word)
+    while (std::getline(textFile, line))
     {
-        freq.countFrequencyByWord(word);
+        freq.countFrequencyFromText(line, true, true);
     }
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     freq.print();
-    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << " nanoseconds (1 billionth of a second)" << std::endl;
-    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds (1 millionth of a second)" << std::endl;
-    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " milliseconds (1 thousandth of a second)" << std::endl;
+    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << " nanoseconds (1/1 000 000 000 of a second)" << std::endl;
+    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds (1/1 000 000 of a second)" << std::endl;
+    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " milliseconds (1/1000 of a second)" << std::endl;
 
-    std::cout << "Global accumulator: " << freq.getGlobalAccumulator() << std::endl;
-    std::cout << "Table size: " << freq.getSize() << std::endl;
-    std::cout << "Stored size: " << freq.getStoredSize() << std::endl;
+    std::cout << "Total words on input: " << freq.getGlobalAccumulator() << std::endl;
+    std::cout << "Table size (total buckets): " << freq.getSize() << std::endl;
+    std::cout << "Stored size (occupied buckets): " << freq.getStoredSize() << std::endl;
     std::cout << "Fails: " << freq.getFailedCount() << std::endl;
+    std::cout << "Collisions (for unique words): " << freq.getCollisions() << std::endl;
+    std::cout << "Collisions (iterations): " << freq.getCollisionIterations() << std::endl;
 
     textFile.close();
-
-    /* Frequency freq = Frequency<100>();
-
-       std::cout << "start_char: " << (int)freq.getStartChar() << '\n';
-       std::cout << "end_char: " << (int)freq.getEndChar() << '\n';
-
-       std::string words[10] = {
-           "hello", "world", "a", "old", "friend", "hello", "darkness", "old", "my", "old"};
-
-       // std::cout << char(words[2][0]) - 'a' << '\n';
-
-       for (int i = 0; i < 10; i++)
-       {
-           std::cout << words[i] << ' ' << freq.hash_base(words[i]) << '\n';
-       } */
 
     return 0;
 }

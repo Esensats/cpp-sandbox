@@ -1,0 +1,24 @@
+
+word
+dash-word
+kebab-case-word
+-leftdashword
+rightdashword-
+-left-kebab
+right-kebab-
+-both-kebab-
+-both-
+--double-dash--
+--double--
+--left-double
+right-double--
+--leftdoublenodash
+rightdoublenodash--
+    indented-tab
+  indented-space
+
+after-linebreak
+
+---
+
+comma,separated,words
